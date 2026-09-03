@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledger — Personal Finance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #10201B;
+    --surface: #16241E;
+    --surface-raised: #1D3128;
+    --hairline: rgba(242,236,221,0.09);
+    --ivory: #F2ECDD;
+    --muted: #8FA69C;
+    --brass: #C9A227;
+    --brass-bright: #E7C567;
+    --sage: #7FB88F;
+    --teal: #4FA6A0;
+    --plum: #A8729A;
+    --blue: #6C8EBF;
+    --lavender: #8C87C9;
+    --coral: #E2725B;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+    --radius: 20px;
+    --radius-sm: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(ellipse 900px 500px at 12% -8%, rgba(201,162,39,0.12), transparent 60%), var(--bg);
+    color: var(--ivory);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::after {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    opacity: 0.035; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  a { color: inherit; }
+  button { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--brass-bright); outline-offset: 3px; }
+
+  .page { max-width: 1080px; margin: 0 auto; padding: 32px 24px 64px; position: relative; z-index: 1; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
+  .brand {
+    font-family: var(--font-display); font-weight: 600; font-size: 15px;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--ivory);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .brand-mark { color: var(--brass); font-size: 10px; }
+  .brand-dot { color: var(--brass); }
+  .period { font-family: var(--font-mono); font-size: 13px; color: var(--muted); letter-spacing: 0.04em; }
+
+  .eyebrow {
+    font-family: var(--font-body); font-weight: 600; font-size: 12px;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass);
+    margin: 0 0 20px;
+  }
+
+  .hero {
+    display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: center;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius);
+    padding: 40px; margin-bottom: 56px; position: relative; overflow: hidden;
+  }
+  #heroRing { position: relative; display: inline-block; flex-shrink: 0; }
+  .hero-copy h1 {
+    font-family: var(--font-display); font-weight: 500; font-style: italic;
+    font-size: clamp(22px, 3vw, 32px); line-height: 1.25; margin: 0 0 28px; max-width: 26ch;
+    color: var(--ivory);
+  }
+  .hero-stats { display: flex; gap: 36px; flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; gap: 4px; }
+  .stat-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .stat-value { font-family: var(--font-mono); font-size: 19px; font-weight: 500; color: var(--ivory); }
+  .stat-value.negative { color: var(--coral); }
+
+  .ring-track, .ring-fill { fill: none; }
+  .ring-fill { stroke-linecap: round; }
+  .ring-track { stroke: rgba(242,236,221,0.08); }
+  .ring-bezel { stroke: rgba(242,236,221,0.16); stroke-width: 1.4; stroke-dasharray: 1 7; fill: none; }
+  .ring-fill.ring-over { filter: drop-shadow(0 0 8px rgba(226,114,91,0.45)); }
+  .ring-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; pointer-events: none;
+  }
+  .ring-pct { font-family: var(--font-display); font-weight: 600; font-size: 40px; color: var(--ivory); }
+  .ring-pct.small { font-family: var(--font-mono); font-size: 18px; font-weight: 500; }
+  .ring-sub { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
+  .categories { margin-bottom: 56px; }
+  .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
+  .category-card {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius-sm);
+    padding: 24px 16px 20px; display: flex; flex-direction: column; align-items: center; text-align: center;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .category-card:hover { border-color: rgba(201,162,39,0.35); transform: translateY(-2px); }
+  .ring-wrap { position: relative; display: inline-block; margin-bottom: 14px; }
+  .category-name { font-size: 13px; font-weight: 600; margin: 0 0 4px; color: var(--ivory); }
+  .category-amount { font-family: var(--font-mono); font-size: 13px; color: var(--muted); margin: 0; }
+
+  .ledger { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 48px; }
+  .ledger-col { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius); padding: 28px 26px; }
+  .ledger-row {
+    display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: baseline;
+    padding: 11px 0; border-bottom: 1px dashed var(--hairline); font-size: 13.5px;
+  }
+  .ledger-row:last-of-type { border-bottom: none; }
+  .ledger-name { color: var(--ivory); }
+  .ledger-meta { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; }
+  .ledger-amount { font-family: var(--font-mono); color: var(--ivory); font-weight: 500; }
+  .ledger-total {
+    display: flex; justify-content: space-between; margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--hairline); font-family: var(--font-mono); font-weight: 600;
+    color: var(--brass-bright); font-size: 14px;
+  }
+  .trip-row { padding: 14px 0; border-bottom: 1px dashed var(--hairline); }
+  .trip-row:last-of-type { border-bottom: none; }
+  .trip-head { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 4px; }
+  .trip-meta { font-size: 11.5px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 8px; }
+  .trip-bar { height: 4px; border-radius: 2px; background: rgba(242,236,221,0.08); overflow: hidden; margin-bottom: 6px; }
+  .trip-bar-fill { height: 100%; background: var(--sage); border-radius: 2px; width: 0%; transition: width 1s cubic-bezier(.16,1,.3,1); }
+  .trip-saved { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+  .empty-row { color: var(--muted); font-size: 13px; font-style: italic; }
+
+  .debts { margin-bottom: 48px; }
+  .section-caption { font-size: 12px; color: var(--muted); margin: -14px 0 22px; max-width: 62ch; line-height: 1.6; }
+  .debt-overview { display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 20px; }
+  .debt-insight {
+    background: linear-gradient(135deg, rgba(201,162,39,0.14), rgba(201,162,39,0.03));
+    border: 1px solid rgba(201,162,39,0.25); border-radius: var(--radius-sm);
+    padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  .debt-insight-figure { font-family: var(--font-display); font-weight: 600; font-size: 26px; color: var(--brass-bright); margin: 0; }
+  .debt-insight-text { font-size: 13.5px; color: var(--ivory); margin: 0; line-height: 1.5; }
+  .debt-insight-text strong { color: var(--brass-bright); }
+  .debt-list { display: flex; flex-direction: column; gap: 12px; }
+  .debt-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius-sm); overflow: hidden; }
+  .debt-summary {
+    display: flex; align-items: center; gap: 14px; padding: 16px 20px; cursor: pointer;
+    list-style: none; font-size: 13.5px;
+  }
+  .debt-summary::-webkit-details-marker { display: none; }
+  .debt-badge {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex;
+    align-items: center; justify-content: center; font-family: var(--font-mono);
+    font-size: 12px; font-weight: 600; border: 1px solid var(--hairline); color: var(--muted);
+  }
+  .debt-badge.focus { background: var(--brass); border-color: var(--brass); color: #16241E; }
+  .debt-name-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .debt-name { color: var(--ivory); font-weight: 600; }
+  .debt-type { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .debt-balance { font-family: var(--font-mono); font-weight: 500; color: var(--ivory); white-space: nowrap; }
+  .debt-chevron { color: var(--muted); font-size: 12px; transition: transform 0.2s ease; }
+  details[open] .debt-chevron { transform: rotate(180deg); }
+  .debt-detail { padding: 0 20px 20px 60px; display: flex; flex-direction: column; gap: 10px; }
+  .debt-detail-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); font-family: var(--font-mono); }
+  .debt-detail-row span:last-child { color: var(--ivory); }
+  .debt-progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .debt-bar { height: 5px; border-radius: 3px; background: rgba(242,236,221,0.08); overflow: hidden; }
+  .debt-bar-fill { height: 100%; background: var(--sage); border-radius: 3px; width: 0%; transition: width 1s cubic-bezier(.16,1,.3,1); }
+  .debt-notes { font-size: 12px; color: var(--muted); font-style: italic; }
+
+  .status { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); padding-top: 20px; border-top: 1px solid var(--hairline); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .status-dot.live { background: var(--sage); box-shadow: 0 0 0 3px rgba(127,184,143,0.18); }
+  .link-btn { background: none; border: none; color: var(--brass); cursor: pointer; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px; margin-left: auto; padding: 4px; }
+
+  .connect-panel { position: fixed; inset: 0; background: rgba(8,14,11,0.72); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 10; }
+  .connect-panel[hidden] { display: none; }
+  .connect-card { background: var(--surface-raised); border: 1px solid var(--hairline); border-radius: var(--radius); padding: 36px; max-width: 440px; width: 100%; }
+  .connect-card h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0 0 18px; }
+  .connect-card ol { margin: 0 0 20px; padding-left: 20px; color: var(--muted); font-size: 13.5px; line-height: 1.7; }
+  .connect-card ol strong { color: var(--ivory); }
+  .connect-card code { font-family: var(--font-mono); background: rgba(242,236,221,0.08); padding: 1px 5px; border-radius: 4px; }
+  .connect-form { display: flex; gap: 8px; margin-bottom: 16px; }
+  .connect-form input { flex: 1; background: rgba(242,236,221,0.06); border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; color: var(--ivory); font-family: var(--font-mono); font-size: 13px; }
+  .connect-form input::placeholder { color: var(--muted); }
+  .connect-form button { background: var(--brass); color: #16241E; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .connect-error { color: var(--coral); font-size: 12.5px; margin: -8px 0 16px; }
+
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; text-align: center; padding: 32px 24px; }
+    .hero-copy h1 { max-width: none; }
+    .hero-stats { justify-content: center; }
+    #heroRing { margin: 0 auto; }
+    .ledger { grid-template-columns: 1fr; }
+    .top { flex-direction: column; align-items: flex-start; gap: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <div class="brand"><span class="brand-mark">&#9679;</span> LEDGER<span class="brand-dot">.</span></div>
+    <div class="period" id="periodLabel">&mdash;</div>
+  </header>
+
+  <section class="hero">
+    <div id="heroRing"></div>
+    <div class="hero-copy">
+      <p class="eyebrow">This month</p>
+      <h1 id="heroHeadline">Loading your numbers&hellip;</h1>
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-label">Income</span><span class="stat-value" id="statIncome">&mdash;</span></div>
+        <div class="stat"><span class="stat-label">Spent</span><span class="stat-value" id="statSpent">&mdash;</span></div>
+        <div class="stat"><span class="stat-label">Net</span><span class="stat-value" id="statNet">&mdash;</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="categories">
+    <p class="eyebrow">Where it went</p>
+    <div class="category-grid" id="categoryGrid"></div>
+  </section>
+
+  <section class="ledger">
+    <div class="ledger-col">
+      <p class="eyebrow">Recurring bills</p>
+      <div class="bill-list" id="billList"></div>
+      <div class="ledger-total" id="billTotal"></div>
+    </div>
+    <div class="ledger-col">
+      <p class="eyebrow">Upcoming trips</p>
+      <div class="trip-list" id="tripList"></div>
+      <div class="ledger-total" id="tripTotal"></div>
+    </div>
+  </section>
+
+  <section class="debts">
+    <p class="eyebrow">Debt snowball</p>
+    <p class="section-caption">Ordered smallest balance to largest &mdash; clearing small debts first builds momentum, even though paying the highest-APR debt first usually saves more in interest.</p>
+    <div class="debt-overview" id="debtOverview"></div>
+    <div class="debt-insight" id="debtInsight"></div>
+    <div class="debt-list" id="debtList"></div>
+  </section>
+
+  <footer class="status">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">Connecting&hellip;</span>
+    <button id="setupBtn" class="link-btn" type="button">Connect your sheet</button>
+  </footer>
+
+</div>
+
+<div class="connect-panel" id="connectPanel" hidden>
+  <div class="connect-card">
+    <h2>Connect your Google Sheet</h2>
+    <ol>
+      <li>In Sheets: <strong>Share &rarr; General access &rarr; Anyone with the link &rarr; Viewer.</strong></li>
+      <li>Copy the ID from the URL: docs.google.com/spreadsheets/d/<strong>[this part]</strong>/edit</li>
+      <li>Paste it below to preview it now, or set <code>SHEET_ID</code> at the top of the script tag to make it permanent.</li>
+    </ol>
+    <p class="connect-error" id="connectError" hidden></p>
+    <div class="connect-form">
+      <input type="text" id="sheetIdInput" placeholder="Paste your spreadsheet ID" autocomplete="off">
+      <button id="connectBtn" type="button">Connect</button>
+    </div>
+    <button id="closePanelBtn" class="link-btn" type="button">Use demo data instead</button>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// CONFIG — paste your Google Sheet ID below to make the connection
+// permanent (no need to re-enter it in the panel every visit).
+// Find it in the sheet's URL: docs.google.com/spreadsheets/d/THIS_PART/edit
+// =====================================================================
+const CONFIG = {
+  SHEET_ID: '', // e.g. '1AbCдефDEFghiJKLmnoPQRstuVWXyz0123456789'
+};
+
+// Matches the sample rows the template ships with, so the page looks
+// right the moment it's opened, before you've connected a real sheet.
+const DEMO_DATA = {
+  month: 'August 2026',
+  income: 3650,
+  expenses: 2494.04,
+  billsTotal: 2072.98,
+  tripsTotal: 950,
+  categories: [
+    { name: 'Rent', amount: 1800 },
+    { name: 'Essentials', amount: 303.77 },
+    { name: 'Discretionary', amount: 269.99 },
+    { name: 'Transportation', amount: 92.30 },
+    { name: 'Subscriptions', amount: 27.98 },
+  ],
+  bills: [
+    { name: 'Rent', category: 'Rent', amount: 1800, dueDay: 1, account: 'Chase Checking' },
+    { name: 'Internet', category: 'Essentials', amount: 70, dueDay: 5, account: 'Chase Checking' },
+    { name: 'Phone plan', category: 'Essentials', amount: 55, dueDay: 15, account: 'Chase Checking' },
+    { name: 'Netflix', category: 'Subscriptions', amount: 15.99, dueDay: 12, account: 'Chase Credit' },
+    { name: 'Spotify', category: 'Subscriptions', amount: 11.99, dueDay: 12, account: 'Chase Credit' },
+    { name: 'Car insurance', category: 'Transportation', amount: 120, dueDay: 8, account: 'Chase Checking' },
+  ],
+  trips: [
+    { name: 'Lake Tahoe weekend', start: '9/12/2026', end: '9/14/2026', budget: 600, saved: 150, notes: 'Cabin with friends' },
+    { name: 'Visit family', start: '10/3/2026', end: '10/6/2026', budget: 350, saved: 0, notes: 'Flights + rental car' },
+  ],
+  debts: [
+    { name: 'Visa Credit Card', type: 'Credit Card', balance: 850, apr: 0.2499, minPayment: 35, originalBalance: 1200, notes: 'Chase Sapphire' },
+    { name: 'Student Loan', type: 'Student Loan', balance: 8200, apr: 0.045, minPayment: 95, originalBalance: 12000, notes: 'Federal subsidized' },
+    { name: 'Car Loan', type: 'Auto Loan', balance: 12500, apr: 0.065, minPayment: 310, originalBalance: 18000, notes: '2023 Honda Civic, 60mo term' },
+  ],
+};
+
+(function () {
+  const CATEGORY_COLORS = {
+    Rent: 'var(--brass)',
+    Essentials: 'var(--teal)',
+    Subscriptions: 'var(--plum)',
+    Transportation: 'var(--blue)',
+    Discretionary: 'var(--lavender)',
+  };
+
+  const fmtUSD = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+
+  let sessionSheetId = '';
+  const activeSheetId = () => sessionSheetId || CONFIG.SHEET_ID;
+
+  function cellNumber(cell) {
+    if (!cell) return 0;
+    const v = cell.v;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const s = v.trim();
+      const negParen = /^\(.*\)$/.test(s);
+      const cleaned = s.replace(/[^0-9.\-]/g, '');
+      let n = parseFloat(cleaned);
+      if (isNaN(n)) return 0;
+      if (negParen && n > 0) n = -n;
+      return n;
+    }
+    return 0;
+  }
+
+  function cellText(cell) {
+    if (!cell) return '';
+    if (cell.f !== undefined && cell.f !== null) return String(cell.f);
+    if (typeof cell.v === 'string') return cell.v;
+    if (typeof cell.v === 'number') return String(cell.v);
+    return '';
+  }
+
+  // Google's gviz endpoint doesn't send CORS headers, so a normal fetch()
+  // gets blocked by the browser. It was built for old-school JSONP <script>
+  // tag loading instead, which isn't subject to that same-origin check —
+  // so that's how we load it here.
+  let jsonpCounter = 0;
+  function fetchSheetTable(sheetName) {
+    return new Promise((resolve, reject) => {
+      const id = activeSheetId();
+      const cbName = '__gvizCb_' + (jsonpCounter++) + '_' + Date.now();
+      const url = 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(id) +
+        '/gviz/tq?tqx=out:json;responseHandler:' + cbName +
+        '&sheet=' + encodeURIComponent(sheetName);
+
+      let settled = false;
+      const script = document.createElement('script');
+
+      const cleanup = () => {
+        delete window[cbName];
+        script.remove();
+        clearTimeout(timer);
+      };
+
+      window[cbName] = (json) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        if (json.status === 'error') {
+          const msg = (json.errors && json.errors[0] && json.errors[0].detailed_message) || 'Sheets query error';
+          reject(new Error('"' + sheetName + '" tab: ' + msg));
+        } else {
+          resolve(json.table);
+        }
+      };
+
+      script.onerror = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error('Could not load the "' + sheetName + '" tab. Check the spreadsheet ID.'));
+      };
+
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error('Timed out loading "' + sheetName + '". Check sharing is set to "Anyone with the link — Viewer".'));
+      }, 10000);
+
+      script.src = url;
+      document.head.appendChild(script);
+    });
+  }
+
+  function tableToObjects(table) {
+    const headers = table.cols.map((c) => (c.label || '').trim());
+    return table.rows.map((r) => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = (r.c || [])[i] || null; });
+      return obj;
+    });
+  }
+
+  async function loadLiveData() {
+    const [summaryT, dashT, billsT, tripsT, debtsT] = await Promise.all([
+      fetchSheetTable('Summary'),
+      fetchSheetTable('Dashboard'),
+      fetchSheetTable('Bills'),
+      fetchSheetTable('Trips'),
+      fetchSheetTable('Debts'),
+    ]);
+
+    const summaryRows = tableToObjects(summaryT);
+    const findRow = (label) => summaryRows.find((r) => cellText(r['Metric']).trim() === label);
+    const val = (label) => { const r = findRow(label); return r ? r['Value'] : null; };
+
+    const income = cellNumber(val('Total Income'));
+    const expenses = cellNumber(val('Total Expenses'));
+
+    const data = {
+      month: cellText(val('Selected Month')) || '',
+      income: income,
+      expenses: expenses,
+      billsTotal: cellNumber(val('Total Monthly Bills')),
+      tripsTotal: cellNumber(val('Total Upcoming Trip Budget')),
+      categories: tableToObjects(dashT)
+        .map((r) => ({ name: cellText(r['Category']), amount: cellNumber(r['Amount']) }))
+        .filter((c) => c.name),
+      bills: [],
+      trips: [],
+      debts: [],
+    };
+
+    for (const r of tableToObjects(billsT)) {
+      const name = cellText(r['Bill Name']);
+      if (!name || name.trim().toLowerCase() === 'total') break;
+      data.bills.push({
+        name: name,
+        category: cellText(r['Category']),
+        amount: cellNumber(r['Amount']),
+        dueDay: cellNumber(r['Due Day']),
+        account: cellText(r['Account']),
+      });
+    }
+    for (const r of tableToObjects(tripsT)) {
+      const name = cellText(r['Trip']);
+      if (!name || name.trim().toLowerCase() === 'total') break;
+      data.trips.push({
+        name: name,
+        start: cellText(r['Start Date']),
+        end: cellText(r['End Date']),
+        budget: cellNumber(r['Estimated Budget']),
+        saved: cellNumber(r['Saved So Far']),
+        notes: cellText(r['Notes']),
+      });
+    }
+    for (const r of tableToObjects(debtsT)) {
+      const name = cellText(r['Debt Name']);
+      if (!name || name.trim().toLowerCase() === 'total') break;
+      data.debts.push({
+        name: name,
+        type: cellText(r['Type']),
+        balance: cellNumber(r['Balance']),
+        apr: cellNumber(r['APR']),
+        minPayment: cellNumber(r['Minimum Payment']),
+        originalBalance: cellNumber(r['Original Balance']),
+        notes: cellText(r['Notes']),
+      });
+    }
+    return data;
+  }
+
+  // ---------------------------------------------------------- rings --
+  function ringSVG(opts) {
+    const size = opts.size, stroke = opts.stroke, color = opts.color;
+    const radius = size / 2 - stroke / 2 - 10;
+    const cx = size / 2, cy = size / 2;
+    const c = 2 * Math.PI * radius;
+    const bezelR = radius + stroke / 2 + 6;
+    const html = '' +
+      '<svg viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '">' +
+      '<circle class="ring-bezel" cx="' + cx + '" cy="' + cy + '" r="' + bezelR + '"></circle>' +
+      '<circle class="ring-track" cx="' + cx + '" cy="' + cy + '" r="' + radius + '" stroke-width="' + stroke + '"></circle>' +
+      '<circle class="ring-fill" cx="' + cx + '" cy="' + cy + '" r="' + radius + '" stroke-width="' + stroke + '" ' +
+      'stroke="' + color + '" stroke-dasharray="' + c.toFixed(2) + '" stroke-dashoffset="' + c.toFixed(2) + '" ' +
+      'transform="rotate(-90 ' + cx + ' ' + cy + ')"></circle>' +
+      '</svg>';
+    return { html: html, circumference: c };
+  }
+
+  function animateRing(el, circumference, pct, delay) {
+    const clamped = Math.max(0, Math.min(pct, 1));
+    if (pct > 1) el.classList.add('ring-over');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.transition = 'stroke-dashoffset 1.15s cubic-bezier(.16,1,.3,1) ' + delay + 's';
+      el.style.strokeDashoffset = String(circumference * (1 - clamped));
+    }));
+  }
+
+  function animateNumber(el, target, opts) {
+    const decimals = opts.decimals || 0, suffix = opts.suffix || '', duration = opts.duration || 1100, delay = opts.delay || 0;
+    const start = performance.now() + delay * 1000;
+    function frame(now) {
+      const t = Math.max(0, Math.min((now - start) / duration, 1));
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = (target * eased).toFixed(decimals) + suffix;
+      if (t < 1) requestAnimationFrame(frame);
+      else el.textContent = target.toFixed(decimals) + suffix;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function emptyRow(text) { return '<p class="empty-row">' + text + '</p>'; }
+
+  // --------------------------------------------------------- render --
+  function render(data, live) {
+    document.getElementById('periodLabel').textContent = data.month || '';
+
+    const pct = data.income > 0 ? data.expenses / data.income : 0;
+    const net = data.income - data.expenses;
+    const hero = ringSVG({ size: 240, stroke: 16, color: pct > 1 ? 'var(--coral)' : 'var(--brass)' });
+    const heroWrap = document.getElementById('heroRing');
+    heroWrap.innerHTML = hero.html +
+      '<div class="ring-center"><span class="ring-pct" id="heroPct">0%</span><span class="ring-sub">of income spent</span></div>';
+    animateRing(heroWrap.querySelector('.ring-fill'), hero.circumference, pct, 0.1);
+    animateNumber(document.getElementById('heroPct'), pct * 100, { decimals: 0, suffix: '%', delay: 0.1 });
+
+    const headline = document.getElementById('heroHeadline');
+    headline.textContent = pct > 1
+      ? "You're " + fmtUSD(Math.abs(net)) + ' over what came in this month.'
+      : "You've spent " + Math.round(pct * 100) + '% of what came in this month.';
+
+    document.getElementById('statIncome').textContent = fmtUSD(data.income);
+    document.getElementById('statSpent').textContent = fmtUSD(data.expenses);
+    const netEl = document.getElementById('statNet');
+    netEl.textContent = (net < 0 ? '\u2212' : '') + fmtUSD(Math.abs(net));
+    netEl.classList.toggle('negative', net < 0);
+
+    const totalExpenses = data.categories.reduce((s, c) => s + c.amount, 0) || 1;
+    const sorted = data.categories.slice().sort((a, b) => b.amount - a.amount);
+    const grid = document.getElementById('categoryGrid');
+    grid.innerHTML = '';
+    sorted.forEach((cat, i) => {
+      const share = cat.amount / totalExpenses;
+      const color = CATEGORY_COLORS[cat.name] || 'var(--muted)';
+      const r = ringSVG({ size: 140, stroke: 10, color: color });
+      const card = document.createElement('div');
+      card.className = 'category-card';
+      card.innerHTML =
+        '<div class="ring-wrap">' + r.html +
+        '<div class="ring-center"><span class="ring-pct small">0%</span></div></div>' +
+        '<p class="category-name">' + escapeHtml(cat.name) + '</p>' +
+        '<p class="category-amount">' + fmtUSD(cat.amount) + '</p>';
+      grid.appendChild(card);
+      const delay = 0.15 + i * 0.08;
+      animateRing(card.querySelector('.ring-fill'), r.circumference, share, delay);
+      animateNumber(card.querySelector('.ring-pct'), share * 100, { decimals: 0, suffix: '%', delay: delay });
+    });
+
+    const billList = document.getElementById('billList');
+    billList.innerHTML = data.bills.map((b) =>
+      '<div class="ledger-row">' +
+      '<span class="ledger-name">' + escapeHtml(b.name) + '</span>' +
+      '<span class="ledger-meta">' + (b.dueDay ? 'Day ' + b.dueDay : '') + '</span>' +
+      '<span class="ledger-amount">' + fmtUSD(b.amount) + '</span>' +
+      '</div>'
+    ).join('') || emptyRow('No bills yet — add them to the Bills tab.');
+    document.getElementById('billTotal').innerHTML = '<span>Total</span><span>' + fmtUSD(data.billsTotal) + '</span>';
+
+    const tripList = document.getElementById('tripList');
+    tripList.innerHTML = data.trips.map((t) => {
+      const p = t.budget > 0 ? Math.min(t.saved / t.budget, 1) : 0;
+      return '<div class="trip-row">' +
+        '<div class="trip-head"><span class="ledger-name">' + escapeHtml(t.name) + '</span>' +
+        '<span class="ledger-amount">' + fmtUSD(t.budget) + '</span></div>' +
+        '<div class="trip-meta">' + escapeHtml(t.start) + (t.end ? ' \u2013 ' + escapeHtml(t.end) : '') +
+        (t.notes ? ' \u00b7 ' + escapeHtml(t.notes) : '') + '</div>' +
+        '<div class="trip-bar"><div class="trip-bar-fill" data-target="' + (p * 100).toFixed(0) + '"></div></div>' +
+        '<div class="trip-saved">' + fmtUSD(t.saved) + ' saved</div>' +
+        '</div>';
+    }).join('') || emptyRow('No trips yet — add them to the Trips tab.');
+    document.getElementById('tripTotal').innerHTML = '<span>Total budgeted</span><span>' + fmtUSD(data.tripsTotal) + '</span>';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      tripList.querySelectorAll('.trip-bar-fill').forEach((el) => { el.style.width = el.dataset.target + '%'; });
+    }));
+
+    renderDebts(data);
+    setStatus(live);
+  }
+
+  function renderDebts(data) {
+    const overview = document.getElementById('debtOverview');
+    const insight = document.getElementById('debtInsight');
+    const list = document.getElementById('debtList');
+    const debts = data.debts || [];
+
+    if (!debts.length) {
+      overview.innerHTML = '';
+      insight.innerHTML = '';
+      list.innerHTML = emptyRow('No debts logged — add them to the Debts tab.');
+      return;
+    }
+
+    const totalDebt = debts.reduce((s, d) => s + d.balance, 0);
+    const totalMin = debts.reduce((s, d) => s + d.minPayment, 0);
+    const leftover = Math.max(data.income - data.expenses, 0);
+    const sorted = debts.slice().sort((a, b) => a.balance - b.balance);
+
+    overview.innerHTML =
+      '<div class="stat"><span class="stat-label">Total debt</span><span class="stat-value">' + fmtUSD(totalDebt) + '</span></div>' +
+      '<div class="stat"><span class="stat-label">Debts</span><span class="stat-value">' + sorted.length + '</span></div>' +
+      '<div class="stat"><span class="stat-label">Monthly minimums</span><span class="stat-value">' + fmtUSD(totalMin) + '</span></div>';
+
+    insight.innerHTML = leftover > 0
+      ? '<p class="debt-insight-figure">' + fmtUSD(leftover) + '</p>' +
+        '<p class="debt-insight-text">left over this month. Debt snowball plans typically send extra ' +
+        'cash like this to the smallest balance first \u2014 right now that\u2019s <strong>' +
+        escapeHtml(sorted[0].name) + '</strong>.</p>'
+      : '<p class="debt-insight-text">No leftover cash this month after expenses, so there\u2019s nothing ' +
+        'extra to put toward debt right now beyond the minimums.</p>';
+
+    list.innerHTML = '';
+    sorted.forEach((d, i) => {
+      const paidPct = d.originalBalance > 0
+        ? Math.max(0, Math.min((d.originalBalance - d.balance) / d.originalBalance, 1))
+        : null;
+      const card = document.createElement('details');
+      card.className = 'debt-card';
+      if (i === 0) card.open = true;
+      card.innerHTML =
+        '<summary class="debt-summary">' +
+          '<span class="debt-badge' + (i === 0 ? ' focus' : '') + '">' + (i + 1) + '</span>' +
+          '<span class="debt-name-wrap"><span class="debt-name">' + escapeHtml(d.name) + '</span>' +
+          '<span class="debt-type">' + escapeHtml(d.type) + '</span></span>' +
+          '<span class="debt-balance">' + fmtUSD(d.balance) + '</span>' +
+          '<span class="debt-chevron">\u2304</span>' +
+        '</summary>' +
+        '<div class="debt-detail">' +
+          '<div class="debt-detail-row"><span>APR</span><span>' + (d.apr * 100).toFixed(2) + '%</span></div>' +
+          '<div class="debt-detail-row"><span>Minimum payment</span><span>' + fmtUSD(d.minPayment) + '/mo</span></div>' +
+          (paidPct !== null
+            ? '<div><div class="debt-progress-label"><span>Paid off</span><span>' + Math.round(paidPct * 100) + '%</span></div>' +
+              '<div class="debt-bar"><div class="debt-bar-fill" data-target="' + (paidPct * 100).toFixed(0) + '"></div></div></div>'
+            : '') +
+          (d.notes ? '<p class="debt-notes">' + escapeHtml(d.notes) + '</p>' : '') +
+        '</div>';
+      list.appendChild(card);
+    });
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      list.querySelectorAll('.debt-bar-fill').forEach((el) => { el.style.width = el.dataset.target + '%'; });
+    }));
+  }
+
+  function setStatus(live) {
+    document.getElementById('statusDot').classList.toggle('live', !!live);
+    document.getElementById('statusText').textContent = live ? 'Live from Google Sheets' : 'Showing demo data';
+  }
+
+  function showConnectPanel(errorMsg) {
+    document.getElementById('connectPanel').hidden = false;
+    const err = document.getElementById('connectError');
+    if (errorMsg) { err.textContent = errorMsg; err.hidden = false; }
+    else { err.hidden = true; }
+  }
+  function hideConnectPanel() { document.getElementById('connectPanel').hidden = true; }
+
+  async function init() {
+    if (!activeSheetId()) {
+      render(DEMO_DATA, false);
+      showConnectPanel();
+      return;
+    }
+    try {
+      const data = await loadLiveData();
+      render(data, true);
+      hideConnectPanel();
+    } catch (err) {
+      console.error(err);
+      render(DEMO_DATA, false);
+      showConnectPanel(err.message);
+    }
+  }
+
+  document.getElementById('setupBtn').addEventListener('click', () => showConnectPanel());
+  document.getElementById('closePanelBtn').addEventListener('click', () => hideConnectPanel());
+  document.getElementById('connectBtn').addEventListener('click', () => {
+    const v = document.getElementById('sheetIdInput').value.trim();
+    if (!v) return;
+    sessionSheetId = v;
+    init();
+  });
+  document.getElementById('sheetIdInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('connectBtn').click();
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>
